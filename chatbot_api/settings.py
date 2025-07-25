@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'drf_spectacular',
     'chat',
 ]
 
@@ -104,9 +105,39 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [],
     'DEFAULT_PERMISSION_CLASSES': [],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 JWT_SECRET_KEY = config('JWT_SECRET_KEY', default='your-jwt-secret-key-change-in-production')
+
+# Spectacular (Swagger/OpenAPI) Configuration
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'ChatBot API',
+    'DESCRIPTION': 'API REST pour système de chat avec authentification JWT, gestion des utilisateurs et envoi de messages avec images.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': True,
+    },
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SORT_OPERATIONS': False,
+    'SECURITY': [
+        {
+            'type': 'apiKey',
+            'in': 'header',
+            'name': 'x-api-key',
+            'description': 'JWT Token obtenu via /login'
+        }
+    ],
+    'SERVERS': [
+        {
+            'url': 'https://localhost:8443',
+            'description': 'Serveur de développement HTTPS'
+        }
+    ],
+}
 
 # CORS Configuration - Handled by nginx proxy to avoid conflicts
 # CORS_ALLOW_ALL_ORIGINS = True

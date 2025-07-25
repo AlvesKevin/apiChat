@@ -4,19 +4,45 @@ import logging
 from django.http import JsonResponse
 from django.contrib.auth import authenticate
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
 from django.core.files.base import ContentFile
 from django.contrib.auth import get_user_model
 from django.db import models
+from rest_framework.decorators import api_view
+from drf_spectacular.utils import extend_schema, OpenApiExample
+from drf_spectacular.openapi import OpenApiParameter
 from .models import Message
 from .authentication import create_jwt_token, jwt_required
+from .serializers import (
+    RegisterSerializer, LoginSerializer, LoginResponseSerializer,
+    SendMessageSerializer, UsersResponseSerializer, MessagesResponseSerializer,
+    SuccessResponseSerializer, ErrorResponseSerializer
+)
 
 logger = logging.getLogger('chat.views')
 
 User = get_user_model()
 
+@extend_schema(
+    operation_id='register_user',
+    summary='Inscription d\'un nouvel utilisateur',
+    description='Créer un nouveau compte utilisateur avec nom d\'utilisateur et mot de passe.',
+    request=RegisterSerializer,
+    responses={
+        200: SuccessResponseSerializer,
+        400: ErrorResponseSerializer,
+    },
+    examples=[
+        OpenApiExample(
+            'Inscription réussie',
+            description='Exemple d\'inscription réussie',
+            value={'username': 'john_doe', 'password': 'monmotdepasse123'},
+            request_only=True,
+        ),
+    ],
+    tags=['Authentification']
+)
 @csrf_exempt
-@require_http_methods(["POST"])
+@api_view(['POST'])
 def register(request):
     logger.info("=== REGISTER REQUEST ===")
     logger.info(f"Request method: {request.method}")
@@ -61,8 +87,28 @@ def register(request):
             'error': str(e)
         }, status=500)
 
+@extend_schema(
+    operation_id='login_user',
+    summary='Connexion utilisateur',
+    description='Authentifier un utilisateur et recevoir un token JWT.',
+    request=LoginSerializer,
+    responses={
+        200: LoginResponseSerializer,
+        400: ErrorResponseSerializer,
+        401: ErrorResponseSerializer,
+    },
+    examples=[
+        OpenApiExample(
+            'Connexion réussie',
+            description='Exemple de connexion réussie',
+            value={'username': 'john_doe', 'password': 'monmotdepasse123'},
+            request_only=True,
+        ),
+    ],
+    tags=['Authentification']
+)
 @csrf_exempt
-@require_http_methods(["POST"])
+@api_view(['POST'])
 def login(request):
     logger.info("=== LOGIN REQUEST ===")
     logger.info(f"Request method: {request.method}")
@@ -97,8 +143,27 @@ def login(request):
         logger.error(f"Unexpected error in login: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
+@extend_schema(
+    operation_id='list_users',
+    summary='Liste des utilisateurs',
+    description='Récupérer la liste de tous les utilisateurs enregistrés.',
+    responses={
+        200: UsersResponseSerializer,
+        401: ErrorResponseSerializer,
+    },
+    parameters=[
+        OpenApiParameter(
+            name='x-api-key',
+            type=str,
+            location=OpenApiParameter.HEADER,
+            description='Token JWT d\'authentification',
+            required=True
+        )
+    ],
+    tags=['Utilisateurs']
+)
 @jwt_required
-@require_http_methods(["GET"])
+@api_view(['GET'])
 def users(request):
     logger.info("=== USERS LIST REQUEST ===")
     logger.info(f"Request from user: {request.user.username} (ID: {request.user.id})")
@@ -122,8 +187,58 @@ def users(request):
         logger.error(f"Error retrieving users list: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
+@extend_schema(
+    operation_id='handle_messages',
+    summary='Gestion des messages',
+    description='Envoyer un nouveau message (POST) ou récupérer les messages (GET).',
+    request={
+        'application/json': SendMessageSerializer
+    },
+    responses={
+        200: MessagesResponseSerializer,
+        400: ErrorResponseSerializer,
+        401: ErrorResponseSerializer,
+    },
+    parameters=[
+        OpenApiParameter(
+            name='x-api-key',
+            type=str,
+            location=OpenApiParameter.HEADER,
+            description='Token JWT d\'authentification',
+            required=True
+        )
+    ],
+    examples=[
+        OpenApiExample(
+            'Message texte simple',
+            description='Envoi d\'un message texte public',
+            value={'content': 'Bonjour tout le monde!'},
+            request_only=True,
+        ),
+        OpenApiExample(
+            'Message privé',
+            description='Envoi d\'un message privé à un utilisateur',
+            value={'content': 'Message privé', 'to': 2},
+            request_only=True,
+        ),
+        OpenApiExample(
+            'Message avec image',
+            description='Envoi d\'un message avec image',
+            value={
+                'content': 'Regardez cette image!',
+                'image': {
+                    'name': 'photo.png',
+                    'content': 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=='
+                }
+            },
+            request_only=True,
+        ),
+    ],
+    tags=['Messages']
+)
 @csrf_exempt
 @jwt_required
+@api_view(['GET', 'POST'])
 def messages_handler(request):
     logger.info(f"=== MESSAGES REQUEST ({request.method}) ===")
     logger.info(f"Request from user: {request.user.username} (ID: {request.user.id})")

@@ -1,189 +1,137 @@
-# API Chatbot Django
+# API Chatbot avec HTTPS et Documentation Swagger
 
-API REST pour un chatbot développée avec Django et Django REST Framework, avec authentification JWT et support des images.
+API REST Django pour système de chat avec authentification JWT, déploiement Docker, HTTPS et documentation interactive.
 
-## Fonctionnalités
+## 🚀 Démarrage rapide
 
-- Inscription et connexion d'utilisateurs
-- Authentification par token JWT
-- Messages publics et privés
-- Support des images (upload en base64)
-- API dockerisée avec PostgreSQL
-
-## Endpoints
-
-### POST /register
-Créer un compte utilisateur
-```json
-{
-  "username": "string",
-  "password": "string"
-}
+```bash
+./deploy_https.sh
 ```
 
-### POST /login
-Authentification utilisateur
+L'API sera accessible sur : **https://localhost:8443**
+
+## 📚 Documentation interactive
+
+- **Swagger UI** : https://localhost:8443/api/docs/
+- **ReDoc** : https://localhost:8443/api/redoc/
+- **Schéma OpenAPI** : https://localhost:8443/api/schema/
+- **Page d'accueil** : https://localhost:8443/
+
+## 📋 Fonctionnalités
+
+- **Documentation Swagger** : Interface interactive pour tester l'API
+- **Authentification JWT** : Système sécurisé avec tokens
+- **Gestion utilisateurs** : Inscription, connexion, liste des utilisateurs
+- **Messages** : Envoi/réception avec support d'images (base64)
+- **HTTPS** : Certificats SSL auto-générés
+- **CORS** : Compatible avec frontends externes
+- **Docker** : Déploiement containerisé complet
+
+## 🔗 Endpoints
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/` | Page d'accueil avec liens documentation |
+| POST | `/register` | Inscription utilisateur |
+| POST | `/login` | Connexion (retourne JWT) |
+| GET | `/users` | Liste des utilisateurs (JWT requis) |
+| GET/POST | `/messages` | Messages (JWT requis) |
+
+## 🔐 Authentification
+
+1. **Inscription** : `POST /register` avec `username` et `password`
+2. **Connexion** : `POST /login` pour obtenir le JWT token
+3. **Utilisation** : Ajouter le header à toutes les requêtes protégées :
+   ```
+   x-api-key: <votre_jwt_token>
+   ```
+
+## 📱 Upload d'images
+
+Format pour envoyer une image :
 ```json
 {
-  "username": "string",
-  "password": "string"
-}
-```
-
-### GET /users
-Lister tous les utilisateurs (authentification requise)
-Header: `x-api-key: <JWT_TOKEN>`
-
-### POST /messages
-Envoyer un message (authentification requise)
-Header: `x-api-key: <JWT_TOKEN>`
-```json
-{
-  "content": "string",
-  "to": "int (optionnel)",
+  "content": "Message avec image",
   "image": {
-    "name": "string",
-    "content": "string (base64)"
+    "name": "photo.png",
+    "content": "base64_encoded_image_data"
   }
 }
 ```
 
-### GET /messages
-Récupérer les messages (authentification requise)
-Header: `x-api-key: <JWT_TOKEN>`
+## 🧪 Test de l'API
 
-## Installation
+La documentation Swagger permet de tester directement tous les endpoints :
 
-### Installation locale
+1. Ouvrir https://localhost:8443/api/docs/
+2. Créer un compte via `/register`
+3. Se connecter via `/login` pour obtenir le token
+4. Cliquer sur "Authorize" et saisir le token
+5. Tester tous les endpoints
 
-1. Cloner le projet
-2. Créer un fichier `.env` basé sur `.env.example`
-3. Lancer avec Docker:
-
-```bash
-docker-compose up --build
-```
-
-L'API sera disponible sur http://localhost:8000
-
-### Installation pour accès externe
-
-Pour rendre l'API accessible depuis d'autres appareils sur le réseau :
+## 🛠️ Commandes utiles
 
 ```bash
-# Déploiement HTTP (accès réseau local)
-./deploy_external.sh
-
-# Ou avec Make
-make deploy-external
+make help          # Aide
+make deploy-https   # Déploiement HTTPS
+make health-check   # Diagnostic API
+make logs          # Voir les logs
+make down          # Arrêter les services
 ```
 
-L'API sera accessible depuis votre réseau local via votre IP (ex: http://192.168.1.100:8000)
+## 🏗️ Architecture
 
-### Installation HTTPS (recommandé)
+```
+Frontend → Nginx (HTTPS + CORS) → Django API → PostgreSQL
+                ↓
+          Documentation Swagger
+```
 
-Pour une compatibilité avec les frontends HTTPS (comme GitLab Pages) :
+## 📖 Documentation technique
+
+### Structure des réponses
+
+**Succès** :
+```json
+{
+  "success": true
+}
+```
+
+**Erreur** :
+```json
+{
+  "error": "Message d'erreur",
+  "success": false
+}
+```
+
+### Exemple d'utilisation complète
 
 ```bash
-# Déploiement HTTPS avec certificats auto-signés
-./deploy_https.sh
+# 1. Inscription
+curl -k -X POST https://localhost:8443/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "test", "password": "password123"}'
 
-# Ou avec Make
-make deploy-https
+# 2. Connexion
+curl -k -X POST https://localhost:8443/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "test", "password": "password123"}'
+
+# 3. Utilisation avec token
+curl -k -X GET https://localhost:8443/users \
+  -H "x-api-key: YOUR_JWT_TOKEN"
 ```
 
-L'API sera accessible en HTTPS via votre IP (ex: https://192.168.1.100:8443)
+## 🌐 Accès externe
 
-## Tests
+L'API est configurée pour être accessible depuis d'autres appareils du réseau local. L'IP sera affichée lors du déploiement.
 
-### Lancer tous les tests automatiquement
-```bash
-# Avec le script de test complet (recommandé)
-./test_runner.sh
+## 📄 OpenAPI/Swagger
 
-# Ou avec Make
-make test
-```
-
-### Tests rapides (API déjà en cours)
-```bash
-make test-quick
-# ou
-python3 tests/test_api.py
-```
-
-### Tests manuels interactifs
-```bash
-python3 tests/test_manual.py
-```
-
-### Autres commandes utiles
-```bash
-make help              # Voir toutes les commandes
-make up                # Démarrer les services
-make down              # Arrêter les services
-make logs              # Voir les logs
-make clean             # Nettoyer complètement
-make deploy-external   # Déployer pour accès externe
-make deploy-https      # Déployer avec HTTPS
-make network-info      # Voir les infos réseau
-make generate-ssl      # Générer certificats SSL
-```
-
-## Tests inclus
-
-La batterie de tests vérifie :
-
-✅ **Register** : Inscription utilisateur, validation des données, utilisateurs existants  
-✅ **Login** : Authentification, tokens JWT, credentials invalides  
-✅ **Users** : Liste des utilisateurs, authentification requise  
-✅ **Messages** : Envoi/réception, messages publics/privés, images en base64  
-✅ **Sécurité** : Authentification JWT, validation des tokens
-
-## Accès réseau
-
-### Informations de connexion
-
-```bash
-# Obtenir votre IP et les URLs d'accès
-make network-info
-# ou
-./get_network_info.sh
-```
-
-### Configuration firewall
-
-- **macOS** : Préférences Système > Sécurité > Pare-feu > Autoriser le port 8000
-- **Linux** : `sudo ufw allow 8000`
-- **Windows** : Panneau de configuration > Pare-feu > Autoriser une app
-
-### Accès depuis un autre appareil
-
-Une fois l'API déployée avec accès externe, les autres personnes peuvent accéder à :
-- **Base URL** : `http://VOTRE_IP:8000`
-- **Exemple** : `http://192.168.1.100:8000/register`
-
-### Test de connectivité
-
-```bash
-# Test HTTP depuis un autre appareil
-curl http://VOTRE_IP:8000/users
-
-# Test HTTPS depuis un autre appareil
-curl -k https://VOTRE_IP:8443/users
-```
-
-## Problèmes CORS et Mixed Content
-
-Si votre frontend utilise HTTPS (comme GitLab Pages), vous devez utiliser la version HTTPS de l'API :
-
-1. **Déployez avec HTTPS** : `make deploy-https`
-2. **Acceptez le certificat** : Dans votre navigateur, allez sur `https://VOTRE_IP:8443` et acceptez le certificat auto-signé
-3. **Configurez votre frontend** : Utilisez `https://VOTRE_IP:8443` comme base URL
-
-### Certificats auto-signés
-
-Les navigateurs afficheront un avertissement pour les certificats auto-signés :
-- Cliquez sur "Paramètres avancés"
-- Puis "Continuer vers le site (non sécurisé)"
-- L'API sera alors accessible en HTTPS
+L'API est entièrement documentée selon les standards OpenAPI 3.0 avec :
+- Descriptions détaillées de chaque endpoint
+- Exemples de requêtes et réponses
+- Schémas de validation
+- Support d'authentification JWT intégré
