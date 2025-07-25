@@ -1,0 +1,64 @@
+
+networks:
+  chatbot_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+services:
+  db:
+    image: postgres:15
+    container_name: chatbot_db
+    environment:
+      POSTGRES_DB: chatbot
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - chatbot_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d chatbot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    container_name: chatbot_api
+    command: >
+      sh -c "./wait-for-postgres.sh db &&
+             python manage.py makemigrations --noinput &&
+             python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 chatbot_api.wsgi:application"
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+      - logs_volume:/app/logs
+    ports:
+      - "0.0.0.0:8000:8000"
+    networks:
+      - chatbot_network
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DEBUG=False
+      - DB_HOST=db
+      - DB_NAME=chatbot
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - SECRET_KEY=your-secret-key-change-in-production
+      - JWT_SECRET_KEY=your-jwt-secret-key-change-in-production
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
+  logs_volume:
